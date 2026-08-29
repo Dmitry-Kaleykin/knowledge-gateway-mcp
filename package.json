@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "description": "A policy-aware MCP gateway for retrieving and loading Pi skills through Scribery.",
+  "keywords": [
+    "mcp",
+    "pi",
+    "scribery",
+    "skills"
+  ],
+  "knowledgeGateway": {
+    "externalServices": {
+      "scribery": {
+        "transport": "stdio",
+        "command": "scribery-mcp",
+        "localDevelopmentPath": "../scribery/packages/scribery",
+        "requiredTools": [
+          "list_documentation_sources",
+          "search_documentation"
+        ]
+      }
+    }
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -12,6 +12,9 @@ The gateway exposes exactly two read-only tools:
 Scribery remains generic and project-scoped. The gateway starts its own private,
 read-only Scribery MCP subprocess with only `list_documentation_sources` and
 `search_documentation` enabled. Those underlying tools are never exposed to Pi.
+This external runtime relationship is also declared under the custom
+`knowledgeGateway.externalServices` package metadata. It is intentionally not an
+npm dependency because no Scribery package assets are imported or bundled.
 
 ## Invocation policy
 
