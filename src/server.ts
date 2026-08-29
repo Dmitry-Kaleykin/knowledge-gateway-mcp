@@ -25,17 +25,16 @@ export function createKnowledgeGatewayServer(
     server.registerTool(
         "search_skills",
         {
-            title: "Search specialized skills",
+            title: "Search for a skill",
             description:
-                "Search for specialized instructions relevant to the current task. Use this when " +
-                "specialized guidance, established workflows, or domain-specific conventions may " +
-                "improve the result. Returns only a few relevant candidates; it cannot list the " +
-                "complete skill catalog. Call load_skill only for a genuinely relevant match.",
+                "Search within local library of skills. " +
+                "Returns relevant candidates; it cannot list the complete skill catalog. " +
+                "Call load_skill for a relevant match.",
             inputSchema: z.object({
                 query: z.string().trim().min(1).describe(
                     "Describe the user's task and the specialized guidance needed.",
                 ),
-                limit: z.number().int().min(1).max(5).default(3).describe(
+                limit: z.number().int().min(1).max(10).default(3).describe(
                     "Maximum number of distinct skill candidates to return.",
                 ),
             }),
@@ -49,11 +48,9 @@ export function createKnowledgeGatewayServer(
     server.registerTool(
         "load_skill",
         {
-            title: "Load a selected skill",
+            title: "Load a found skill",
             description:
-                "Load the complete SKILL.md for an exact skill name returned by search_skills. " +
-                "After reading its routing guidance, call this tool again with specific reference " +
-                "paths only when those references are needed. Manual-only skills are inaccessible.",
+                "Load the complete skill for an exact skill name returned by search_skills.",
             inputSchema: z.object({
                 name: z.string().trim().min(1).describe(
                     "Exact skill name returned by search_skills.",
