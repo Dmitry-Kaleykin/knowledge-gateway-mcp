@@ -1,13 +1,19 @@
 # knowledge-gateway-mcp
 
-A small global MCP server that discovers Pi skills, applies invocation policy,
-uses Scribery for semantic retrieval and reranking, and loads only the skill files
-selected for the current task.
+A policy-aware knowledge gateway that discovers Pi skills, uses Scribery for
+semantic retrieval and reranking, and exposes both a generic MCP server and a
+Pi-native adapter.
 
-The gateway exposes exactly two read-only tools:
+Both adapters expose exactly two model-facing tools:
 
 - `search_skills` searches eligible skill packages without revealing the full catalog;
-- `load_skill` loads `SKILL.md` or explicitly selected references from a returned skill.
+- `load_skill` activates `SKILL.md` or loads explicitly selected references from
+  a returned skill.
+
+In the generic MCP adapter, `load_skill` returns `SKILL.md` as an MCP tool result.
+In the Pi adapter, the same call is handed to Pi's native `/skill:name` pipeline,
+so the skill becomes a user-role skill message with Pi's collapsible skill widget.
+Explicit reference-file requests remain ordinary tool results.
 
 Scribery remains generic and project-scoped. The gateway starts its own private,
 read-only Scribery MCP subprocess with only `list_documentation_sources` and
@@ -35,7 +41,7 @@ Supported policies are:
 
 - `manual` — ignored by the gateway and available only through Pi's manual skill invocation;
 - `retrieved` — eligible for `search_skills` and `load_skill`;
-- `pinned` — eligible for search/load and advertised in the MCP server instructions.
+- `pinned` — eligible for search/load and advertised in the active adapter's instructions.
 
 Missing `metadata.invocation` defaults safely to `manual`. A `retrieved` or
 `pinned` skill without `disable-model-invocation: true` is excluded, preventing
@@ -43,13 +49,13 @@ the same skill from appearing through both Pi's native catalog and the gateway.
 
 ## Automatic manifest
 
-The in-memory skill manifest is built when the MCP server starts and refreshed
+The in-memory skill manifest is built when an adapter starts and refreshed
 internally before every search or load. There is no manifest-management tool.
 
 Discovery is recursive below the configured Pi skills root. Each directory
 containing `SKILL.md` becomes one skill package; nested files such as
 `references/*.md`, scripts and assets belong to that package. File hashes are
-cached by size and filesystem timestamps during the server lifetime, while a
+cached by size and filesystem timestamps during the adapter lifetime, while a
 package hash and whole-manifest hash change whenever relevant files change.
 
 Scribery's active indexed-file inventory supplies each result's original absolute
@@ -77,9 +83,45 @@ npm install
 npm run check
 ```
 
-The executable is generated at `dist/cli.js`.
+The MCP executable is generated at `dist/cli.js`; the Pi adapter is generated at
+`dist/pi-extension.js`.
 
-## Run
+## Pi-native adapter
+
+The Pi adapter is the preferred integration when Pi is the host. Build the
+package, then install this repository as a global local-path Pi package:
+
+```sh
+cd /Users/donais/Documents/Projects/knowledge-gateway-mcp
+npm run build
+pi install /Users/donais/Documents/Projects/knowledge-gateway-mcp
+```
+
+Configure the adapter with the environment variables listed below before
+starting Pi. For example:
+
+```sh
+export KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND=/Users/donais/Documents/Projects/scribery/packages/scribery/dist/mcp.js
+export KNOWLEDGE_GATEWAY_DOCUMENTATION=pi-skills
+export KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE=omlx-qwen3
+export KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY=omlx
+pi
+```
+
+Do not enable the scoped-MCP registration below at the same time. Both adapters
+use the names `search_skills` and `load_skill`, so Pi should load exactly one
+adapter.
+
+Pi skill discovery must remain enabled. Individual gateway skills should still
+set `disable-model-invocation: true`; this hides their descriptions from Pi's
+model catalog without preventing the adapter from invoking `/skill:name`.
+
+When the model calls `load_skill` without `files` (or explicitly requests only
+`SKILL.md`), the adapter validates gateway policy and queues the native skill
+command as a steering user message. When `files` contains reference paths, the
+gateway returns those files directly without reinvoking the skill.
+
+## Generic MCP adapter
 
 With a Scribery provider profile:
 
@@ -103,7 +145,7 @@ The following environment variables correspond to the command-line options:
 - `KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_MODEL`
 - `KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_INSTRUCTION`
 
-## Global scoped-mcp registration
+### Global scoped-mcp registration
 
 Add a reusable profile and include it from `$global`:
 
@@ -145,7 +187,8 @@ global profiles. Reload Pi after saving it.
 
 ## Security boundary
 
-- All exposed operations are read-only.
+- All gateway filesystem and Scribery operations are read-only. Pi-native skill
+  activation adds a user message to the current Pi session.
 - There is no `list_skills` tool.
 - Search is hard-scoped to indexed files owned by eligible skills.
 - Manual skills are neither searchable nor loadable through the gateway.
@@ -153,3 +196,5 @@ global profiles. Reload Pi after saving it.
   traversal, binary files, oversized files and oversized combined responses.
 - The model cannot select documentation identifiers, tags, provider settings,
   reranking settings or arbitrary source identifiers.
+- The Pi adapter validates the selected skill through the same gateway policy
+  before asking Pi to expand `/skill:name`.

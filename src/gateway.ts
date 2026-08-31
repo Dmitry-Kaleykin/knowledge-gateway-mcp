@@ -84,13 +84,7 @@ export class KnowledgeGateway {
     }
 
     async loadSkill(name: string, files?: readonly string[]): Promise<LoadedSkill> {
-        await this.#catalog.refresh();
-        const skill = this.#catalog.findAccessibleSkill(name);
-        if (skill === undefined) {
-            throw new Error(
-                `Skill ${name} is not available to the gateway. Manual skills cannot be loaded by the model.`,
-            );
-        }
+        const skill = await this.resolveSkill(name);
         const requested = files === undefined ? ["SKILL.md"] : [...new Set(files)];
         if (requested.length === 0 || requested.length > MAXIMUM_FILES_PER_LOAD) {
             throw new Error(
@@ -119,6 +113,19 @@ export class KnowledgeGateway {
                 "Follow the loaded skill instructions. Load only the listed reference files that " +
                 "the SKILL.md routing guidance requires for the current task.",
         };
+    }
+
+    async resolveSkill(name: string): Promise<
+        SkillManifestEntry & { invocation: "retrieved" | "pinned" }
+    > {
+        await this.#catalog.refresh();
+        const skill = this.#catalog.findAccessibleSkill(name);
+        if (skill === undefined) {
+            throw new Error(
+                `Skill ${name} is not available to the gateway. Manual skills cannot be loaded by the model.`,
+            );
+        }
+        return skill;
     }
 
     close(): Promise<void> {

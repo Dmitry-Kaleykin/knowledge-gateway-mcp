@@ -1,19 +1,14 @@
 # Architecture
 
 ```text
-Pi
- └─ knowledge-gateway-mcp (global)
-     ├─ SkillCatalog
-     │   ├─ scans the global Pi skills root
-     │   ├─ parses native and gateway invocation policy
-     │   └─ maps every package file to its owning SKILL.md
-     ├─ KnowledgeGateway
-     │   ├─ hard-scopes eligible sources
-     │   ├─ groups retrieval hits by skill
-     │   └─ safely loads selected package files
-     └─ ScriberyMcpBackend
-         └─ private read-only Scribery MCP subprocess
-             └─ pi-skills documentation
+Pi ── Pi adapter ───────────────┐
+                                │
+Other MCP hosts ── MCP adapter ─┼─ KnowledgeGateway
+                                │   ├─ SkillCatalog
+                                │   └─ ScriberyMcpBackend
+                                │       └─ private read-only Scribery MCP
+                                │           └─ pi-skills documentation
+                                └─ shared policy and retrieval behavior
 ```
 
 ## Responsibilities
@@ -29,8 +24,16 @@ boundary without teaching Scribery about skills.
 `KnowledgeGateway` joins backend source identities to the live skill manifest.
 It owns grouping, result limits, presentation and safe file loading.
 
-The MCP server owns only tool schemas, descriptions, read-only annotations and
-error serialization. It exposes no indexing or synchronization operation.
+The MCP adapter owns only tool schemas, descriptions, read-only annotations and
+error serialization. It returns loaded skill files through MCP and exposes no
+indexing or synchronization operation.
+
+The Pi adapter exposes the same two tool names. Search uses the shared gateway
+unchanged. Initial `load_skill` calls are validated by the gateway and then queued
+as `/skill:name` through Pi's extension API with native skill expansion enabled.
+Pi therefore owns the skill user message, relative-reference base and collapsible
+widget. Explicit nested-reference requests continue through safe gateway file
+loading.
 
 ## Search sequence
 
@@ -48,3 +51,18 @@ search_skills(query)
 Indexing stays human-operated through Scribery TUI. Manifest refresh stays
 automatic and internal to the gateway. This keeps both model-facing tools
 intuitive and prevents lifecycle mechanics from leaking into the model surface.
+
+## Pi load sequence
+
+```text
+load_skill(name)
+  → refresh and validate retrieved/pinned policy
+  → queue /skill:name as a steering user message
+  → Pi resolves its discovered SKILL.md
+  → Pi strips frontmatter and adds the native <skill> user message
+  → Pi renders its native collapsible skill widget
+
+load_skill(name, files=[reference paths])
+  → refresh and validate retrieved/pinned policy
+  → safely return only manifest-owned reference files
+```
