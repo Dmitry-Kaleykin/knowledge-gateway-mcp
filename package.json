@@ -1,15 +1,14 @@
 {
-  "name": "knowledge-gateway-mcp",
+  "name": "knowledge-gateway",
   "version": "0.1.0",
   "private": true,
-  "description": "A policy-aware Pi and MCP gateway for retrieving skills through Scribery.",
+  "description": "A Pi package for retrieving skills through Scribery and activating them natively.",
   "files": [
     "dist",
     "README.md",
     "ARCHITECTURE.md"
   ],
   "keywords": [
-    "mcp",
     "pi",
     "pi-package",
     "scribery",
@@ -36,19 +35,15 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "knowledge-gateway-mcp": "./dist/cli.js"
-  },
   "scripts": {
-    "build": "node scripts/clean-dist.mjs && tsc --project tsconfig.build.json && node scripts/mark-executable.mjs",
+    "build": "node scripts/clean-dist.mjs && tsc --project tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "yaml": "^2.8.1",
-    "zod": "^4.4.3"
+    "yaml": "^2.8.1"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

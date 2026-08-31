@@ -1,39 +1,34 @@
 # Architecture
 
 ```text
-Pi ── Pi adapter ───────────────┐
-                                │
-Other MCP hosts ── MCP adapter ─┼─ KnowledgeGateway
-                                │   ├─ SkillCatalog
-                                │   └─ ScriberyMcpBackend
-                                │       └─ private read-only Scribery MCP
-                                │           └─ pi-skills documentation
-                                └─ shared policy and retrieval behavior
+Pi
+└─ knowledge-gateway extension
+   ├─ search_skills
+   ├─ load_skill
+   └─ KnowledgeGateway
+      ├─ SkillCatalog
+      └─ ScriberyMcpBackend
+         └─ private read-only Scribery MCP
+            └─ pi-skills documentation
 ```
 
 ## Responsibilities
 
-`SkillCatalog` owns filesystem truth and Pi-specific policy. It knows what a
-skill package is and which invocation values permit model access.
+`SkillCatalog` owns filesystem truth and Pi-specific policy. It discovers nested
+skill packages, builds the in-memory manifest, and decides which invocation
+values permit model access.
 
-`KnowledgeBackend` is the generic retrieval boundary. The current
-`ScriberyMcpBackend` implementation translates inventory and search calls to a
-private Scribery MCP process. A future documentation gateway can reuse this
-boundary without teaching Scribery about skills.
+`KnowledgeGateway` joins Scribery source identities to the live skill manifest.
+It owns grouping, result limits, presentation, and safe reference-file loading.
 
-`KnowledgeGateway` joins backend source identities to the live skill manifest.
-It owns grouping, result limits, presentation and safe file loading.
+`ScriberyMcpBackend` is a private retrieval client. It starts Scribery as a
+read-only MCP subprocess and requests only indexed-file inventory and semantic
+search. The MCP transport does not cross the package boundary.
 
-The MCP adapter owns only tool schemas, descriptions, read-only annotations and
-error serialization. It returns loaded skill files through MCP and exposes no
-indexing or synchronization operation.
-
-The Pi adapter exposes the same two tool names. Search uses the shared gateway
-unchanged. Initial `load_skill` calls are validated by the gateway and then queued
-as `/skill:name` through Pi's extension API with native skill expansion enabled.
-Pi therefore owns the skill user message, relative-reference base and collapsible
-widget. Explicit nested-reference requests continue through safe gateway file
-loading.
+The Pi extension is the only adapter. It registers `search_skills` and
+`load_skill`, validates initial loads through the gateway, and then queues
+`/skill:name` with native prompt expansion. Pi owns the resulting skill user
+message, relative-reference base, and collapsible widget.
 
 ## Search sequence
 
@@ -49,10 +44,10 @@ search_skills(query)
 ```
 
 Indexing stays human-operated through Scribery TUI. Manifest refresh stays
-automatic and internal to the gateway. This keeps both model-facing tools
+automatic and internal to the extension. This keeps both model-facing tools
 intuitive and prevents lifecycle mechanics from leaking into the model surface.
 
-## Pi load sequence
+## Load sequence
 
 ```text
 load_skill(name)

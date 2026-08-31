@@ -1,6 +1,5 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { parseArgs } from "node:util";
 
 export interface GatewayConfiguration {
     skillsRoot: string;
@@ -13,53 +12,26 @@ export interface GatewayConfiguration {
     scriberyRerankInstruction?: string;
 }
 
-export type CliConfiguration =
-    | { mode: "run"; configuration: GatewayConfiguration }
-    | { mode: "help" }
-    | { mode: "version" };
-
-export function parseConfiguration(
-    args: readonly string[],
+export function configurationFromEnvironment(
     environment: NodeJS.ProcessEnv = process.env,
-): CliConfiguration {
-    const parsed = parseArgs({
-        args,
-        options: {
-            "skills-root": { type: "string" },
-            documentation: { type: "string" },
-            "scribery-command": { type: "string" },
-            profile: { type: "string" },
-            "base-url": { type: "string" },
-            "api-key": { type: "string" },
-            "rerank-model": { type: "string" },
-            "rerank-instruction": { type: "string" },
-            help: { type: "boolean", short: "h" },
-            version: { type: "boolean", short: "v" },
-        },
-        strict: true,
-    });
-    if (parsed.values.help === true) return { mode: "help" };
-    if (parsed.values.version === true) return { mode: "version" };
-
+): GatewayConfiguration {
     const piAgentDirectory = environment.PI_CODING_AGENT_DIR?.trim() ||
         join(homedir(), ".pi", "agent");
     const scriberyProfile = optionalText(
-        parsed.values.profile ?? environment.KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE,
-        "--profile",
+        environment.KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE,
+        "KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE",
     );
     const scriberyBaseUrl = optionalText(
-        parsed.values["base-url"] ?? environment.KNOWLEDGE_GATEWAY_SCRIBERY_BASE_URL,
-        "--base-url",
+        environment.KNOWLEDGE_GATEWAY_SCRIBERY_BASE_URL,
+        "KNOWLEDGE_GATEWAY_SCRIBERY_BASE_URL",
     );
     const scriberyRerankModel = optionalText(
-        parsed.values["rerank-model"] ??
-            environment.KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_MODEL,
-        "--rerank-model",
+        environment.KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_MODEL,
+        "KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_MODEL",
     );
     const scriberyRerankInstruction = optionalText(
-        parsed.values["rerank-instruction"] ??
-            environment.KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_INSTRUCTION,
-        "--rerank-instruction",
+        environment.KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_INSTRUCTION,
+        "KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_INSTRUCTION",
     );
     if (
         scriberyProfile !== undefined &&
@@ -67,70 +39,37 @@ export function parseConfiguration(
             scriberyRerankInstruction !== undefined)
     ) {
         throw new Error(
-            "--profile cannot be combined with --base-url or reranking options",
+            "KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE cannot be combined with " +
+                "KNOWLEDGE_GATEWAY_SCRIBERY_BASE_URL or reranking settings",
         );
     }
+    const scriberyApiKey = optionalText(
+        environment.KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY,
+        "KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY",
+    );
 
     return {
-        mode: "run",
-        configuration: {
-            skillsRoot: resolve(requiredText(
-                parsed.values["skills-root"] ??
-                    environment.KNOWLEDGE_GATEWAY_SKILLS_ROOT ??
-                    join(piAgentDirectory, "skills"),
-                "--skills-root",
-            )),
-            documentation: requiredText(
-                parsed.values.documentation ??
-                    environment.KNOWLEDGE_GATEWAY_DOCUMENTATION ??
-                    "pi-skills",
-                "--documentation",
-            ),
-            scriberyCommand: requiredText(
-                parsed.values["scribery-command"] ??
-                    environment.KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND ??
-                    "scribery-mcp",
-                "--scribery-command",
-            ),
-            ...(scriberyProfile === undefined ? {} : { scriberyProfile }),
-            ...(scriberyBaseUrl === undefined ? {} : { scriberyBaseUrl }),
-            ...(optionalText(
-                    parsed.values["api-key"] ??
-                        environment.KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY,
-                    "--api-key",
-                ) === undefined
-                ? {}
-                : {
-                    scriberyApiKey: optionalText(
-                        parsed.values["api-key"] ??
-                            environment.KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY,
-                        "--api-key",
-                    )!,
-                }),
-            ...(scriberyRerankModel === undefined ? {} : { scriberyRerankModel }),
-            ...(scriberyRerankInstruction === undefined
-                ? {}
-                : { scriberyRerankInstruction }),
-        },
+        skillsRoot: resolve(requiredText(
+            environment.KNOWLEDGE_GATEWAY_SKILLS_ROOT ??
+                join(piAgentDirectory, "skills"),
+            "KNOWLEDGE_GATEWAY_SKILLS_ROOT",
+        )),
+        documentation: requiredText(
+            environment.KNOWLEDGE_GATEWAY_DOCUMENTATION ?? "pi-skills",
+            "KNOWLEDGE_GATEWAY_DOCUMENTATION",
+        ),
+        scriberyCommand: requiredText(
+            environment.KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND ?? "scribery-mcp",
+            "KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND",
+        ),
+        ...(scriberyProfile === undefined ? {} : { scriberyProfile }),
+        ...(scriberyBaseUrl === undefined ? {} : { scriberyBaseUrl }),
+        ...(scriberyApiKey === undefined ? {} : { scriberyApiKey }),
+        ...(scriberyRerankModel === undefined ? {} : { scriberyRerankModel }),
+        ...(scriberyRerankInstruction === undefined
+            ? {}
+            : { scriberyRerankInstruction }),
     };
-}
-
-export function usage(): string {
-    return `Knowledge Gateway MCP (read-only stdio)
-
-Usage:
-    knowledge-gateway-mcp [--skills-root <directory>]
-        [--documentation <name-or-id>]
-        [--scribery-command <path>] [--profile <name>] [--api-key <key>]
-        [--base-url <url>] [--rerank-model <id>]
-        [--rerank-instruction <text>]
-
-Defaults:
-    skills root    $PI_CODING_AGENT_DIR/skills or ~/.pi/agent/skills
-    documentation pi-skills
-    Scribery       scribery-mcp
-
-The server exposes only search_skills and load_skill.`;
 }
 
 function requiredText(value: string, option: string): string {

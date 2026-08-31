@@ -5,7 +5,7 @@ import type {
 import { Type } from "typebox";
 
 import { ScriberyMcpBackend } from "./backends/scribery-mcp-backend.js";
-import { parseConfiguration } from "./config.js";
+import { configurationFromEnvironment } from "./config.js";
 import type {
     LoadedSkill,
     SkillManifestEntry,
@@ -19,14 +19,11 @@ const SEARCH_LIMIT = 3;
 export default async function knowledgeGatewayPiExtension(
     pi: ExtensionAPI,
 ): Promise<void> {
-    const parsed = parseConfiguration([]);
-    if (parsed.mode !== "run") {
-        throw new Error("Knowledge Gateway Pi adapter requires runtime configuration");
-    }
-    const catalog = new SkillCatalog(parsed.configuration.skillsRoot);
+    const configuration = configurationFromEnvironment();
+    const catalog = new SkillCatalog(configuration.skillsRoot);
     const gateway = new KnowledgeGateway(
         catalog,
-        new ScriberyMcpBackend(parsed.configuration),
+        new ScriberyMcpBackend(configuration),
     );
     await gateway.initialize();
     registerKnowledgeGatewayPiTools(pi, gateway, catalog.manifest.skills);
