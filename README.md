@@ -1,4 +1,4 @@
-# knowledge-gateway
+# skills-retrieval
 
 A Pi package that discovers skills, uses Scribery for semantic retrieval and
 reranking, and activates selected skills through Pi's native skill pipeline.
@@ -22,7 +22,7 @@ and this project does not provide a public MCP server or executable.
 
 ## Invocation policy
 
-Every Pi skill managed by the gateway must remain hidden from Pi's native model
+Every Pi skill managed by Skills Retrieval must remain hidden from Pi's native model
 catalog:
 
 ```yaml
@@ -37,13 +37,13 @@ metadata:
 
 Supported policies are:
 
-- `manual` — ignored by the gateway and available only through Pi's manual skill invocation;
+- `manual` — ignored by retrieval and available only through Pi's manual skill invocation;
 - `retrieved` — eligible for `search_skills` and `load_skill`;
 - `pinned` — eligible for search/load and advertised in the extension instructions.
 
 Missing `metadata.invocation` defaults safely to `manual`. A `retrieved` or
 `pinned` skill without `disable-model-invocation: true` is excluded, preventing
-the same skill from appearing through Pi's native catalog and the gateway.
+the same skill from appearing through Pi's native catalog and retrieval.
 
 ## Automatic manifest
 
@@ -57,7 +57,7 @@ cached by size and filesystem timestamps during the extension lifetime. A
 package hash and whole-manifest hash change whenever relevant files change.
 
 Scribery's active indexed-file inventory supplies each result's original absolute
-location. The gateway uses that location to map a hit in a nested reference back
+location. Skills Retrieval uses that location to map a hit in a nested reference back
 to the owning `SKILL.md`. Duplicate filenames therefore do not make skill
 selection ambiguous.
 
@@ -77,38 +77,38 @@ unchanged chunks and embeddings.
 ## Install in Pi
 
 ```sh
-cd /Users/donais/Documents/Projects/knowledge-gateway-mcp
+cd /Users/donais/Documents/Projects/skills-retrieval
 npm install
 npm run check
-pi install /Users/donais/Documents/Projects/knowledge-gateway-mcp
+pi install /Users/donais/Documents/Projects/skills-retrieval
 ```
 
 The Pi extension is generated at `dist/pi-extension.js`. Configure it through
 environment variables before starting Pi. For example:
 
 ```sh
-export KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND=/Users/donais/Documents/Projects/scribery/packages/scribery/dist/mcp.js
-export KNOWLEDGE_GATEWAY_DOCUMENTATION=pi-skills
-export KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE=omlx-qwen3
-export KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY=omlx
+export SKILLS_RETRIEVAL_SCRIBERY_COMMAND=/Users/donais/Documents/Projects/scribery/packages/scribery/dist/mcp.js
+export SKILLS_RETRIEVAL_DOCUMENTATION=pi-skills
+export SKILLS_RETRIEVAL_SCRIBERY_PROFILE=omlx-qwen3
+export SKILLS_RETRIEVAL_SCRIBERY_API_KEY=omlx
 pi
 ```
 
 Available settings are:
 
-- `KNOWLEDGE_GATEWAY_SKILLS_ROOT` — defaults to `$PI_CODING_AGENT_DIR/skills`
+- `SKILLS_RETRIEVAL_SKILLS_ROOT` — defaults to `$PI_CODING_AGENT_DIR/skills`
   or `~/.pi/agent/skills`;
-- `KNOWLEDGE_GATEWAY_DOCUMENTATION` — defaults to `pi-skills`;
-- `KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND` — defaults to `scribery-mcp`;
-- `KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE`;
-- `KNOWLEDGE_GATEWAY_SCRIBERY_BASE_URL`;
-- `KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY`;
-- `KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_MODEL`;
-- `KNOWLEDGE_GATEWAY_SCRIBERY_RERANK_INSTRUCTION`.
+- `SKILLS_RETRIEVAL_DOCUMENTATION` — defaults to `pi-skills`;
+- `SKILLS_RETRIEVAL_SCRIBERY_COMMAND` — defaults to `scribery-mcp`;
+- `SKILLS_RETRIEVAL_SCRIBERY_PROFILE`;
+- `SKILLS_RETRIEVAL_SCRIBERY_BASE_URL`;
+- `SKILLS_RETRIEVAL_SCRIBERY_API_KEY`;
+- `SKILLS_RETRIEVAL_SCRIBERY_RERANK_MODEL`;
+- `SKILLS_RETRIEVAL_SCRIBERY_RERANK_INSTRUCTION`.
 
 Use either a Scribery profile or explicit base-URL/reranking settings, not both.
 
-Pi skill discovery must remain enabled. Individual gateway skills should still
+Pi skill discovery must remain enabled. Individual retrieved skills should still
 set `disable-model-invocation: true`; this hides their descriptions from Pi's
 model catalog without preventing the extension from invoking `/skill:name`.
 
@@ -118,9 +118,9 @@ model catalog without preventing the extension from invoking `/skill:name`.
   a user message to the current Pi session.
 - There is no `list_skills`, indexing, synchronization, or manifest tool.
 - Search is hard-scoped to indexed files owned by eligible skills.
-- Manual skills are neither searchable nor loadable through the gateway.
+- Manual skills are neither searchable nor loadable through retrieval.
 - `load_skill` accepts only manifest-listed, skill-relative paths and rejects
   traversal, binary files, oversized files, and oversized combined responses.
 - The model cannot select documentation identifiers, provider settings,
   reranking settings, arbitrary source identifiers, or Scribery tools.
-- The selected skill is validated through gateway policy before Pi expands it.
+- The selected skill is validated through retrieval policy before Pi expands it.

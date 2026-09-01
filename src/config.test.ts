@@ -17,11 +17,11 @@ test("Pi environment supplies defaults and resolves the skills root", () => {
 
 test("explicit Pi extension settings are trimmed and retained", () => {
     const configuration = configurationFromEnvironment({
-        KNOWLEDGE_GATEWAY_SKILLS_ROOT: " /tmp/custom-skills ",
-        KNOWLEDGE_GATEWAY_DOCUMENTATION: " custom-docs ",
-        KNOWLEDGE_GATEWAY_SCRIBERY_COMMAND: " /opt/scribery-mcp ",
-        KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE: " local-profile ",
-        KNOWLEDGE_GATEWAY_SCRIBERY_API_KEY: " secret ",
+        SKILLS_RETRIEVAL_SKILLS_ROOT: " /tmp/custom-skills ",
+        SKILLS_RETRIEVAL_DOCUMENTATION: " custom-docs ",
+        SKILLS_RETRIEVAL_SCRIBERY_COMMAND: " /opt/scribery-mcp ",
+        SKILLS_RETRIEVAL_SCRIBERY_PROFILE: " local-profile ",
+        SKILLS_RETRIEVAL_SCRIBERY_API_KEY: " secret ",
     });
 
     assert.deepEqual(configuration, {
@@ -36,8 +36,8 @@ test("explicit Pi extension settings are trimmed and retained", () => {
 test("a Scribery profile cannot be mixed with explicit provider settings", () => {
     assert.throws(
         () => configurationFromEnvironment({
-            KNOWLEDGE_GATEWAY_SCRIBERY_PROFILE: "local-profile",
-            KNOWLEDGE_GATEWAY_SCRIBERY_BASE_URL: "http://localhost:8000",
+            SKILLS_RETRIEVAL_SCRIBERY_PROFILE: "local-profile",
+            SKILLS_RETRIEVAL_SCRIBERY_BASE_URL: "http://localhost:8000",
         }),
         /cannot be combined/u,
     );

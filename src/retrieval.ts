@@ -2,11 +2,11 @@ import { basename, resolve } from "node:path";
 import { realpath } from "node:fs/promises";
 
 import type {
-    KnowledgeBackend,
-    KnowledgeSearchResult,
-    KnowledgeSource,
+    IndexedSkillSource,
     LoadedSkill,
     SkillManifestEntry,
+    SkillRetrievalBackend,
+    SkillRetrievalResult,
     SkillSearchMatch,
     SkillSearchResponse,
 } from "./contracts.js";
@@ -17,11 +17,11 @@ const MAXIMUM_LIMIT = 5;
 const MAXIMUM_FILES_PER_LOAD = 10;
 const MAXIMUM_LOAD_CHARACTERS = 250_000;
 
-export class KnowledgeGateway {
+export class SkillsRetrieval {
     readonly #catalog: SkillCatalog;
-    readonly #backend: KnowledgeBackend;
+    readonly #backend: SkillRetrievalBackend;
 
-    constructor(catalog: SkillCatalog, backend: KnowledgeBackend) {
+    constructor(catalog: SkillCatalog, backend: SkillRetrievalBackend) {
         this.#catalog = catalog;
         this.#backend = backend;
     }
@@ -47,7 +47,7 @@ export class KnowledgeGateway {
                 query: normalizedQuery,
                 matches: [],
                 instruction:
-                    "No gateway-accessible skills are configured. Skills require " +
+                    "No retrieval-eligible skills are configured. Skills require " +
                     "disable-model-invocation: true and metadata.invocation: retrieved or pinned.",
             };
         }
@@ -122,7 +122,7 @@ export class KnowledgeGateway {
         const skill = this.#catalog.findAccessibleSkill(name);
         if (skill === undefined) {
             throw new Error(
-                `Skill ${name} is not available to the gateway. Manual skills cannot be loaded by the model.`,
+                `Skill ${name} is not available to skills retrieval. Manual skills cannot be loaded by the model.`,
             );
         }
         return skill;
@@ -139,7 +139,7 @@ interface MappedSource {
 }
 
 async function mapSourcesToSkills(
-    sources: readonly KnowledgeSource[],
+    sources: readonly IndexedSkillSource[],
     skills: readonly (SkillManifestEntry & { invocation: "retrieved" | "pinned" })[],
 ): Promise<ReadonlyMap<string, MappedSource>> {
     const mapped = new Map<string, MappedSource>();
@@ -164,7 +164,7 @@ async function mapSourcesToSkills(
 }
 
 function bestMatchPerSkill(
-    results: readonly KnowledgeSearchResult[],
+    results: readonly SkillRetrievalResult[],
     sourceToSkill: ReadonlyMap<string, MappedSource>,
 ): SkillSearchMatch[] {
     const best = new Map<string, SkillSearchMatch>();

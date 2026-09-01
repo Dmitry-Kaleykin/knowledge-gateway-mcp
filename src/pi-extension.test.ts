@@ -7,17 +7,17 @@ import { describe, it } from "node:test";
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 
 import type {
-    KnowledgeBackend,
-    KnowledgeSearchResult,
-    KnowledgeSource,
+    IndexedSkillSource,
+    SkillRetrievalBackend,
+    SkillRetrievalResult,
 } from "./contracts.js";
-import { KnowledgeGateway } from "./gateway.js";
-import { registerKnowledgeGatewayPiTools } from "./pi-extension.js";
+import { SkillsRetrieval } from "./retrieval.js";
+import { registerSkillsRetrievalPiTools } from "./pi-extension.js";
 import { SkillCatalog } from "./skills/catalog.js";
 
-describe("Knowledge Gateway Pi adapter", () => {
+describe("Skills Retrieval Pi extension", () => {
     it("activates SKILL.md natively and returns references as tool results", async () => {
-        const root = await mkdtemp(join(tmpdir(), "knowledge-gateway-pi-"));
+        const root = await mkdtemp(join(tmpdir(), "skills-retrieval-pi-"));
         try {
             const skillRoot = join(root, "example");
             await mkdir(join(skillRoot, "references"), { recursive: true });
@@ -50,12 +50,12 @@ Follow this guidance.
                     score: 1,
                 }],
             );
-            const gateway = new KnowledgeGateway(catalog, backend);
-            await gateway.initialize();
+            const retrieval = new SkillsRetrieval(catalog, backend);
+            await retrieval.initialize();
             const harness = new PiHarness();
-            registerKnowledgeGatewayPiTools(
+            registerSkillsRetrievalPiTools(
                 harness.api,
-                gateway,
+                retrieval,
                 catalog.manifest.skills,
             );
 
@@ -127,19 +127,19 @@ class PiHarness {
     }
 }
 
-class FakeBackend implements KnowledgeBackend {
+class FakeBackend implements SkillRetrievalBackend {
     closed = false;
 
     constructor(
-        readonly sources: readonly KnowledgeSource[],
-        readonly results: readonly KnowledgeSearchResult[],
+        readonly sources: readonly IndexedSkillSource[],
+        readonly results: readonly SkillRetrievalResult[],
     ) {}
 
-    async listSources(): Promise<readonly KnowledgeSource[]> {
+    async listSources(): Promise<readonly IndexedSkillSource[]> {
         return this.sources;
     }
 
-    async search(): Promise<readonly KnowledgeSearchResult[]> {
+    async search(): Promise<readonly SkillRetrievalResult[]> {
         return this.results;
     }
 

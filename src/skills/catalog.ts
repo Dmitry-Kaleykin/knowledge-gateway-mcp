@@ -44,7 +44,7 @@ export class SkillCatalog {
                     diagnostics.push({
                         path: entrypoint,
                         code: "native-model-invocation-enabled",
-                        message: "Gateway skills must set disable-model-invocation: true",
+                        message: "Retrieved skills must set disable-model-invocation: true",
                     });
                 }
                 skills.push({
@@ -103,7 +103,7 @@ export class SkillCatalog {
     accessibleSkills(): readonly (
         SkillManifestEntry & { invocation: "retrieved" | "pinned" }
     )[] {
-        return this.manifest.skills.filter(isGatewayAccessible);
+        return this.manifest.skills.filter(isRetrievalAccessible);
     }
 
     findAccessibleSkill(name: string): (
@@ -163,7 +163,7 @@ interface CachedFile {
     file: SkillFile;
 }
 
-export function isGatewayAccessible(
+export function isRetrievalAccessible(
     skill: SkillManifestEntry,
 ): skill is SkillManifestEntry & { invocation: "retrieved" | "pinned" } {
     return skill.disableModelInvocation &&

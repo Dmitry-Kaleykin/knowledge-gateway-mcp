@@ -11,28 +11,28 @@ import type {
     SkillManifestEntry,
     SkillSearchResponse,
 } from "./contracts.js";
-import { KnowledgeGateway } from "./gateway.js";
+import { SkillsRetrieval } from "./retrieval.js";
 import { SkillCatalog } from "./skills/catalog.js";
 
 const SEARCH_LIMIT = 3;
 
-export default async function knowledgeGatewayPiExtension(
+export default async function skillsRetrievalPiExtension(
     pi: ExtensionAPI,
 ): Promise<void> {
     const configuration = configurationFromEnvironment();
     const catalog = new SkillCatalog(configuration.skillsRoot);
-    const gateway = new KnowledgeGateway(
+    const retrieval = new SkillsRetrieval(
         catalog,
         new ScriberyMcpBackend(configuration),
     );
-    await gateway.initialize();
-    registerKnowledgeGatewayPiTools(pi, gateway, catalog.manifest.skills);
+    await retrieval.initialize();
+    registerSkillsRetrievalPiTools(pi, retrieval, catalog.manifest.skills);
 }
 
-export function registerKnowledgeGatewayPiTools(
+export function registerSkillsRetrievalPiTools(
     pi: ExtensionAPI,
-    gateway: Pick<
-        KnowledgeGateway,
+    retrieval: Pick<
+        SkillsRetrieval,
         "searchSkills" | "loadSkill" | "resolveSkill" | "close"
     >,
     skills: readonly SkillManifestEntry[],
@@ -72,7 +72,7 @@ export function registerKnowledgeGatewayPiTools(
             })),
         }, { additionalProperties: false }),
         async execute(_toolCallId, parameters, signal) {
-            const response = await gateway.searchSkills(
+            const response = await retrieval.searchSkills(
                 parameters.query,
                 parameters.limit ?? SEARCH_LIMIT,
                 signal,
@@ -109,7 +109,7 @@ export function registerKnowledgeGatewayPiTools(
             AgentToolResult<Record<string, unknown>>
         > {
             if (isEntrypointRequest(parameters.files)) {
-                const skill = await gateway.resolveSkill(parameters.name);
+                const skill = await retrieval.resolveSkill(parameters.name);
                 pi.sendUserMessage(nativeSkillCommand(skill.name), {
                     deliverAs: "steer",
                     expandPromptTemplates: true,
@@ -129,13 +129,13 @@ export function registerKnowledgeGatewayPiTools(
                     },
                 };
             }
-            const loaded = await gateway.loadSkill(parameters.name, parameters.files);
+            const loaded = await retrieval.loadSkill(parameters.name, parameters.files);
             return jsonToolResult(loaded, { mode: "files" });
         },
     });
 
     pi.on("session_shutdown", async () => {
-        await gateway.close();
+        await retrieval.close();
     });
 }
 

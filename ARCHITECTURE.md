@@ -2,10 +2,10 @@
 
 ```text
 Pi
-└─ knowledge-gateway extension
+└─ skills-retrieval extension
    ├─ search_skills
    ├─ load_skill
-   └─ KnowledgeGateway
+   └─ SkillsRetrieval
       ├─ SkillCatalog
       └─ ScriberyMcpBackend
          └─ private read-only Scribery MCP
@@ -18,7 +18,7 @@ Pi
 skill packages, builds the in-memory manifest, and decides which invocation
 values permit model access.
 
-`KnowledgeGateway` joins Scribery source identities to the live skill manifest.
+`SkillsRetrieval` joins Scribery source identities to the live skill manifest.
 It owns grouping, result limits, presentation, and safe reference-file loading.
 
 `ScriberyMcpBackend` is a private retrieval client. It starts Scribery as a
@@ -26,7 +26,7 @@ read-only MCP subprocess and requests only indexed-file inventory and semantic
 search. The MCP transport does not cross the package boundary.
 
 The Pi extension is the only adapter. It registers `search_skills` and
-`load_skill`, validates initial loads through the gateway, and then queues
+`load_skill`, validates initial loads through Skills Retrieval, and then queues
 `/skill:name` with native prompt expansion. Pi owns the resulting skill user
 message, relative-reference base, and collapsible widget.
 

@@ -4,22 +4,22 @@ import {
     StdioClientTransport,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-import type { GatewayConfiguration } from "../config.js";
+import type { SkillsRetrievalConfiguration } from "../config.js";
 import type {
-    KnowledgeBackend,
-    KnowledgeSearchResult,
-    KnowledgeSource,
+    IndexedSkillSource,
+    SkillRetrievalBackend,
+    SkillRetrievalResult,
 } from "../contracts.js";
 
-export class ScriberyMcpBackend implements KnowledgeBackend {
-    readonly #configuration: GatewayConfiguration;
+export class ScriberyMcpBackend implements SkillRetrievalBackend {
+    readonly #configuration: SkillsRetrievalConfiguration;
     #connection: Promise<Connection> | undefined;
 
-    constructor(configuration: GatewayConfiguration) {
+    constructor(configuration: SkillsRetrievalConfiguration) {
         this.#configuration = configuration;
     }
 
-    async listSources(signal?: AbortSignal): Promise<readonly KnowledgeSource[]> {
+    async listSources(signal?: AbortSignal): Promise<readonly IndexedSkillSource[]> {
         signal?.throwIfAborted();
         const connection = await this.#connect();
         const content = await callStructuredTool(connection.client, {
@@ -31,13 +31,13 @@ export class ScriberyMcpBackend implements KnowledgeBackend {
         if (!Array.isArray(sources)) {
             throw new Error("Scribery returned an invalid indexed source inventory");
         }
-        return sources.map(parseKnowledgeSource);
+        return sources.map(parseIndexedSkillSource);
     }
 
     async search(
         request: { query: string; sourceIds: readonly string[]; limit: number },
         signal?: AbortSignal,
-    ): Promise<readonly KnowledgeSearchResult[]> {
+    ): Promise<readonly SkillRetrievalResult[]> {
         signal?.throwIfAborted();
         const connection = await this.#connect();
         const content = await callStructuredTool(connection.client, {
@@ -109,7 +109,7 @@ export class ScriberyMcpBackend implements KnowledgeBackend {
             },
             stderr: "inherit",
         });
-        const client = new Client({ name: "knowledge-gateway", version: "0.1.0" });
+        const client = new Client({ name: "skills-retrieval", version: "0.1.0" });
         await client.connect(transport);
         return { client };
     }
@@ -133,7 +133,7 @@ async function callStructuredTool(
     return result.structuredContent;
 }
 
-function parseKnowledgeSource(value: unknown): KnowledgeSource {
+function parseIndexedSkillSource(value: unknown): IndexedSkillSource {
     if (!isRecord(value)) throw new Error("Scribery source must be an object");
     return {
         sourceId: requiredString(value.sourceId, "sourceId"),
@@ -144,7 +144,7 @@ function parseKnowledgeSource(value: unknown): KnowledgeSource {
     };
 }
 
-function parseSearchResult(value: unknown): KnowledgeSearchResult {
+function parseSearchResult(value: unknown): SkillRetrievalResult {
     if (!isRecord(value)) throw new Error("Scribery result must be an object");
     return {
         ...(typeof value.sourceId === "string" ? { sourceId: value.sourceId } : {}),

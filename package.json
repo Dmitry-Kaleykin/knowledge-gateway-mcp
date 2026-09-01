@@ -1,5 +1,5 @@
 {
-  "name": "knowledge-gateway",
+  "name": "skills-retrieval",
   "version": "0.1.0",
   "private": true,
   "description": "A Pi package for retrieving skills through Scribery and activating them natively.",
@@ -19,7 +19,7 @@
       "./dist/pi-extension.js"
     ]
   },
-  "knowledgeGateway": {
+  "skillsRetrieval": {
     "externalServices": {
       "scribery": {
         "transport": "stdio",

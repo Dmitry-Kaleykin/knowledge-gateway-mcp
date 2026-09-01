@@ -5,16 +5,16 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import type {
-    KnowledgeBackend,
-    KnowledgeSearchResult,
-    KnowledgeSource,
+    IndexedSkillSource,
+    SkillRetrievalBackend,
+    SkillRetrievalResult,
 } from "./contracts.js";
-import { KnowledgeGateway } from "./gateway.js";
+import { SkillsRetrieval } from "./retrieval.js";
 import { SkillCatalog } from "./skills/catalog.js";
 
-describe("KnowledgeGateway", () => {
+describe("SkillsRetrieval", () => {
     it("hard-scopes retrieval, groups nested hits, and loads selected files", async () => {
-        const root = await mkdtemp(join(tmpdir(), "knowledge-gateway-"));
+        const root = await mkdtemp(join(tmpdir(), "skills-retrieval-"));
         try {
             await createSkill(root, "alpha", "retrieved", {
                 "references/alpha.md": "Alpha reference details\n",
@@ -40,10 +40,10 @@ describe("KnowledgeGateway", () => {
                 ],
             );
             const catalog = new SkillCatalog(root);
-            const gateway = new KnowledgeGateway(catalog, backend);
-            await gateway.initialize();
+            const retrieval = new SkillsRetrieval(catalog, backend);
+            await retrieval.initialize();
 
-            const response = await gateway.searchSkills("specialized task", 2);
+            const response = await retrieval.searchSkills("specialized task", 2);
             assert.deepEqual(backend.requestedSourceIds.sort(), [
                 "alpha-main",
                 "alpha-ref",
@@ -53,13 +53,13 @@ describe("KnowledgeGateway", () => {
             assert.equal(response.matches[1]?.matchedFile, "references/alpha.md");
             assert.equal(response.matches[1]?.matchedExcerpt, "Alpha reference match");
 
-            const loaded = await gateway.loadSkill("alpha");
+            const loaded = await retrieval.loadSkill("alpha");
             assert.deepEqual(loaded.files.map(({ path }) => path), ["SKILL.md"]);
             assert.ok(loaded.availableFiles.includes("references/alpha.md"));
-            const reference = await gateway.loadSkill("alpha", ["references/alpha.md"]);
+            const reference = await retrieval.loadSkill("alpha", ["references/alpha.md"]);
             assert.equal(reference.files[0]?.content, "Alpha reference details\n");
-            await assert.rejects(gateway.loadSkill("manual"), /Manual skills cannot be loaded/u);
-            await gateway.close();
+            await assert.rejects(retrieval.loadSkill("manual"), /Manual skills cannot be loaded/u);
+            await retrieval.close();
             assert.equal(backend.closed, true);
         } finally {
             await rm(root, { recursive: true, force: true });
@@ -67,16 +67,16 @@ describe("KnowledgeGateway", () => {
     });
 });
 
-class FakeBackend implements KnowledgeBackend {
+class FakeBackend implements SkillRetrievalBackend {
     requestedSourceIds: string[] = [];
     closed = false;
 
     constructor(
-        readonly sources: readonly KnowledgeSource[],
-        readonly results: readonly KnowledgeSearchResult[],
+        readonly sources: readonly IndexedSkillSource[],
+        readonly results: readonly SkillRetrievalResult[],
     ) {}
 
-    async listSources(): Promise<readonly KnowledgeSource[]> {
+    async listSources(): Promise<readonly IndexedSkillSource[]> {
         return this.sources;
     }
 
@@ -84,7 +84,7 @@ class FakeBackend implements KnowledgeBackend {
         query: string;
         sourceIds: readonly string[];
         limit: number;
-    }): Promise<readonly KnowledgeSearchResult[]> {
+    }): Promise<readonly SkillRetrievalResult[]> {
         this.requestedSourceIds = [...request.sourceIds];
         const allowed = new Set(request.sourceIds);
         return this.results.filter(({ sourceId }) =>

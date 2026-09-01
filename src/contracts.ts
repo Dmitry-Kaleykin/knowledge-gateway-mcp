@@ -32,13 +32,13 @@ export interface SkillManifest {
     diagnostics: readonly SkillManifestDiagnostic[];
 }
 
-export interface KnowledgeSource {
+export interface IndexedSkillSource {
     sourceId: string;
     logicalPath: string;
     originalLocation?: string;
 }
 
-export interface KnowledgeSearchResult {
+export interface SkillRetrievalResult {
     sourceId?: string;
     path: string;
     content: string;
@@ -47,8 +47,8 @@ export interface KnowledgeSearchResult {
     rerankScore?: number;
 }
 
-export interface KnowledgeBackend {
-    listSources(signal?: AbortSignal): Promise<readonly KnowledgeSource[]>;
+export interface SkillRetrievalBackend {
+    listSources(signal?: AbortSignal): Promise<readonly IndexedSkillSource[]>;
     search(
         request: {
             query: string;
@@ -56,7 +56,7 @@ export interface KnowledgeBackend {
             limit: number;
         },
         signal?: AbortSignal,
-    ): Promise<readonly KnowledgeSearchResult[]>;
+    ): Promise<readonly SkillRetrievalResult[]>;
     close(): Promise<void>;
 }
 
