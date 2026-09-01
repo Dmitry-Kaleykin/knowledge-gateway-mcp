@@ -16,7 +16,7 @@
   ],
   "pi": {
     "extensions": [
-      "./dist/pi-extension.js"
+      "./dist/skill-retrieval/index.js"
     ]
   },
   "skillsRetrieval": {

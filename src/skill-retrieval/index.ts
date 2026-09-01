@@ -4,14 +4,14 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
-import { ScriberyMcpBackend } from "./backends/scribery-mcp-backend.js";
-import { configurationFromEnvironment } from "./config.js";
+import { ScriberyMcpBackend } from "../backends/scribery-mcp-backend.js";
+import { configurationFromEnvironment } from "../config.js";
 import type {
     LoadedSkill,
     SkillSearchResponse,
-} from "./contracts.js";
-import { SkillsRetrieval } from "./retrieval.js";
-import { SkillCatalog } from "./skills/catalog.js";
+} from "../contracts.js";
+import { SkillsRetrieval } from "../retrieval.js";
+import { SkillCatalog } from "../skills/catalog.js";
 
 const SEARCH_LIMIT = 3;
 

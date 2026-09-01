@@ -12,7 +12,7 @@ import type {
     SkillRetrievalResult,
 } from "./contracts.js";
 import { SkillsRetrieval } from "./retrieval.js";
-import { registerSkillsRetrievalPiTools } from "./pi-extension.js";
+import { registerSkillsRetrievalPiTools } from "./skill-retrieval/index.js";
 import { SkillCatalog } from "./skills/catalog.js";
 
 describe("Skills Retrieval Pi extension", () => {

@@ -82,7 +82,7 @@ npm run check
 pi install /Users/donais/Documents/Projects/skills-retrieval
 ```
 
-The Pi extension is generated at `dist/pi-extension.js`. Configure it through
+The Pi extension is generated at `dist/skill-retrieval/index.js`. Configure it through
 environment variables before starting Pi. For example:
 
 ```sh
