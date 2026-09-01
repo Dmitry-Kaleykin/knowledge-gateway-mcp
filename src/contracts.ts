@@ -1,5 +1,3 @@
-export type InvocationMode = "manual" | "retrieved" | "pinned";
-
 export interface SkillFile {
     relativePath: string;
     absolutePath: string;
@@ -10,7 +8,6 @@ export interface SkillFile {
 export interface SkillManifestEntry {
     name: string;
     description: string;
-    invocation: InvocationMode;
     disableModelInvocation: boolean;
     root: string;
     entrypoint: string;
@@ -63,7 +60,6 @@ export interface SkillRetrievalBackend {
 export interface SkillSearchMatch {
     name: string;
     description: string;
-    invocation: "retrieved" | "pinned";
     matchedFile: string;
     matchedExcerpt: string;
     score: number;
@@ -83,7 +79,6 @@ export interface LoadedSkillFile {
 export interface LoadedSkill {
     name: string;
     description: string;
-    invocation: "retrieved" | "pinned";
     entrypoint: string;
     files: readonly LoadedSkillFile[];
     availableFiles: readonly string[];

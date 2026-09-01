@@ -41,27 +41,27 @@ export class SkillsRetrieval {
             throw new Error(`limit must be an integer from 1 to ${MAXIMUM_LIMIT}`);
         }
         await this.#catalog.refresh();
-        const skills = this.#catalog.accessibleSkills();
+        const skills = this.#catalog.retrievalCandidates();
         if (skills.length === 0) {
             return {
                 query: normalizedQuery,
                 matches: [],
                 instruction:
-                    "No retrieval-eligible skills are configured. Skills require " +
-                    "disable-model-invocation: true and metadata.invocation: retrieved or pinned.",
+                    "No retrieval candidates are configured. Skills must set " +
+                    "disable-model-invocation: true.",
             };
         }
 
         const sources = await this.#backend.listSources(signal);
-        const sourceToSkill = await mapSourcesToSkills(sources, skills);
+        const sourceToSkill = await mapIndexedSkillSources(sources, skills);
         const sourceIds = [...sourceToSkill.keys()];
         if (sourceIds.length === 0) {
             return {
                 query: normalizedQuery,
                 matches: [],
                 instruction:
-                    "No eligible skill files are present in the active Scribery documentation index. " +
-                    "Index the configured Pi skills directory in Scribery.",
+                    "No eligible skill packages are present in the active Scribery documentation " +
+                    "index. Add desired skill directories as sources and index them in Scribery.",
             };
         }
 
@@ -104,7 +104,6 @@ export class SkillsRetrieval {
         return {
             name: skill.name,
             description: skill.description,
-            invocation: skill.invocation,
             entrypoint: skill.entrypoint,
             files: loaded,
             availableFiles: skill.files.map(({ relativePath }) => relativePath),
@@ -115,14 +114,19 @@ export class SkillsRetrieval {
         };
     }
 
-    async resolveSkill(name: string): Promise<
-        SkillManifestEntry & { invocation: "retrieved" | "pinned" }
-    > {
+    async resolveSkill(name: string): Promise<SkillManifestEntry> {
         await this.#catalog.refresh();
-        const skill = this.#catalog.findAccessibleSkill(name);
+        const skill = this.#catalog.findRetrievalCandidate(name);
         if (skill === undefined) {
             throw new Error(
-                `Skill ${name} is not available to skills retrieval. Manual skills cannot be loaded by the model.`,
+                `Skill ${name} is not available to skills retrieval. It must exist and set disable-model-invocation: true.`,
+            );
+        }
+        const sources = await this.#backend.listSources();
+        const indexedSources = await mapIndexedSkillSources(sources, [skill]);
+        if (indexedSources.size === 0) {
+            throw new Error(
+                `Skill ${name} is not available to skills retrieval because its SKILL.md is not indexed in Scribery.`,
             );
         }
         return skill;
@@ -134,13 +138,13 @@ export class SkillsRetrieval {
 }
 
 interface MappedSource {
-    skill: SkillManifestEntry & { invocation: "retrieved" | "pinned" };
+    skill: SkillManifestEntry;
     relativePath: string;
 }
 
-async function mapSourcesToSkills(
+async function mapIndexedSkillSources(
     sources: readonly IndexedSkillSource[],
-    skills: readonly (SkillManifestEntry & { invocation: "retrieved" | "pinned" })[],
+    skills: readonly SkillManifestEntry[],
 ): Promise<ReadonlyMap<string, MappedSource>> {
     const mapped = new Map<string, MappedSource>();
     for (const source of sources) {
@@ -160,7 +164,16 @@ async function mapSourcesToSkills(
         );
         if (matches.length === 1) mapped.set(source.sourceId, matches[0]!);
     }
-    return mapped;
+    const indexedSkillRoots = new Set(
+        [...mapped.values()]
+            .filter(({ relativePath }) => relativePath === "SKILL.md")
+            .map(({ skill }) => skill.root),
+    );
+    return new Map(
+        [...mapped.entries()].filter(([, { skill }]) =>
+            indexedSkillRoots.has(skill.root)
+        ),
+    );
 }
 
 function bestMatchPerSkill(
@@ -176,7 +189,6 @@ function bestMatchPerSkill(
         const match: SkillSearchMatch = {
             name: mapped.skill.name,
             description: mapped.skill.description,
-            invocation: mapped.skill.invocation,
             matchedFile: mapped.relativePath,
             matchedExcerpt: excerpt(result.content),
             score,

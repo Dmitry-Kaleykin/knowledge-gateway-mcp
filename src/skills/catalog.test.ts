@@ -7,25 +7,26 @@ import { describe, it } from "node:test";
 import { SkillCatalog } from "./catalog.js";
 
 describe("SkillCatalog", () => {
-    it("builds and refreshes a nested, policy-aware skill manifest", async () => {
-        const root = await mkdtemp(join(tmpdir(), "knowledge-skills-"));
+    it("builds and refreshes a nested, safety-aware skill manifest", async () => {
+        const root = await mkdtemp(join(tmpdir(), "skills-retrieval-catalog-"));
         try {
-            await createSkill(root, "retrieved-skill", "retrieved", true, {
+            await createSkill(root, "retrieved-skill", true, {
                 "references/details.md": "Original nested details\n",
             });
-            await createSkill(root, "manual-skill", "manual", true);
-            await createSkill(root, "unsafe-skill", "retrieved", false);
+            await createSkill(root, "manual-skill", true);
+            await createSkill(root, "unsafe-skill", false);
 
             const catalog = new SkillCatalog(root);
             const first = await catalog.refresh();
             assert.equal(first.skills.length, 3);
-            assert.deepEqual(catalog.accessibleSkills().map(({ name }) => name), [
+            assert.deepEqual(catalog.retrievalCandidates().map(({ name }) => name), [
+                "manual-skill",
                 "retrieved-skill",
             ]);
             assert.ok(first.diagnostics.some(({ code, path }) =>
                 code === "native-model-invocation-enabled" && path.includes("unsafe-skill")
             ));
-            const retrieved = catalog.findAccessibleSkill("RETRIEVED-SKILL");
+            const retrieved = catalog.findRetrievalCandidate("RETRIEVED-SKILL");
             assert.ok(retrieved);
             assert.deepEqual(retrieved.files.map(({ relativePath }) => relativePath), [
                 "references/details.md",
@@ -48,28 +49,33 @@ describe("SkillCatalog", () => {
             );
             const second = await catalog.refresh();
             assert.notEqual(second.manifestHash, first.manifestHash);
-            assert.notEqual(catalog.findAccessibleSkill("retrieved-skill")?.packageHash, firstHash);
+            assert.notEqual(
+                catalog.findRetrievalCandidate("retrieved-skill")?.packageHash,
+                firstHash,
+            );
         } finally {
             await rm(root, { recursive: true, force: true });
         }
     });
 
-    it("treats a missing invocation policy as manual", async () => {
-        const root = await mkdtemp(join(tmpdir(), "knowledge-manual-default-"));
+    it("accepts a skill without metadata", async () => {
+        const root = await mkdtemp(join(tmpdir(), "skills-retrieval-no-metadata-"));
         try {
             const skillRoot = join(root, "legacy");
             await mkdir(skillRoot, { recursive: true });
             await writeFile(join(skillRoot, "SKILL.md"), `---
 name: legacy
-description: Not automatically retrievable
+description: Eligibility comes from the Scribery source list
 disable-model-invocation: true
 ---
 # Legacy
 `, "utf8");
             const catalog = new SkillCatalog(root);
             const manifest = await catalog.refresh();
-            assert.equal(manifest.skills[0]?.invocation, "manual");
-            assert.deepEqual(catalog.accessibleSkills(), []);
+            assert.equal(manifest.skills[0]?.name, "legacy");
+            assert.deepEqual(catalog.retrievalCandidates().map(({ name }) => name), [
+                "legacy",
+            ]);
         } finally {
             await rm(root, { recursive: true, force: true });
         }
@@ -79,7 +85,6 @@ disable-model-invocation: true
 async function createSkill(
     root: string,
     name: string,
-    invocation: "manual" | "retrieved" | "pinned",
     disabled: boolean,
     files: Readonly<Record<string, string>> = {},
 ): Promise<void> {
@@ -89,8 +94,6 @@ async function createSkill(
 name: ${name}
 description: Description for ${name}
 disable-model-invocation: ${String(disabled)}
-metadata:
-  invocation: ${invocation}
 ---
 # ${name}
 `, "utf8");

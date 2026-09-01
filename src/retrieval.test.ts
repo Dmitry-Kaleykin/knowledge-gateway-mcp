@@ -16,27 +16,47 @@ describe("SkillsRetrieval", () => {
     it("hard-scopes retrieval, groups nested hits, and loads selected files", async () => {
         const root = await mkdtemp(join(tmpdir(), "skills-retrieval-"));
         try {
-            await createSkill(root, "alpha", "retrieved", {
+            await createSkill(root, "alpha", true, {
                 "references/alpha.md": "Alpha reference details\n",
             });
-            await createSkill(root, "beta", "pinned");
-            await createSkill(root, "manual", "manual");
+            await createSkill(root, "beta", true);
+            await createSkill(root, "unindexed", true, {
+                "references/details.md": "A reference without an indexed SKILL.md\n",
+            });
+            await createSkill(root, "unsafe", false);
             const alphaSkill = join(root, "alpha", "SKILL.md");
             const alphaReference = join(root, "alpha", "references", "alpha.md");
             const betaSkill = join(root, "beta", "SKILL.md");
-            const manualSkill = join(root, "manual", "SKILL.md");
+            const unindexedReference = join(
+                root,
+                "unindexed",
+                "references",
+                "details.md",
+            );
+            const unsafeSkill = join(root, "unsafe", "SKILL.md");
             const backend = new FakeBackend(
                 [
                     { sourceId: "alpha-main", logicalPath: "skills/alpha/SKILL.md", originalLocation: alphaSkill },
                     { sourceId: "alpha-ref", logicalPath: "skills/alpha/references/alpha.md", originalLocation: alphaReference },
                     { sourceId: "beta-main", logicalPath: "skills/beta/SKILL.md", originalLocation: betaSkill },
-                    { sourceId: "manual-main", logicalPath: "skills/manual/SKILL.md", originalLocation: manualSkill },
+                    {
+                        sourceId: "unindexed-ref",
+                        logicalPath: "skills/unindexed/references/details.md",
+                        originalLocation: unindexedReference,
+                    },
+                    { sourceId: "unsafe-main", logicalPath: "skills/unsafe/SKILL.md", originalLocation: unsafeSkill },
                 ],
                 [
                     { sourceId: "alpha-main", path: "skills/alpha/SKILL.md", content: "Alpha main match", score: 0.6 },
                     { sourceId: "alpha-ref", path: "skills/alpha/references/alpha.md", content: "Alpha   reference\nmatch", score: 0.8 },
                     { sourceId: "beta-main", path: "skills/beta/SKILL.md", content: "Beta match", score: 0.5, rerankScore: 0.9 },
-                    { sourceId: "manual-main", path: "skills/manual/SKILL.md", content: "Must be excluded", score: 1 },
+                    {
+                        sourceId: "unindexed-ref",
+                        path: "skills/unindexed/references/details.md",
+                        content: "Must be excluded without an indexed entrypoint",
+                        score: 1,
+                    },
+                    { sourceId: "unsafe-main", path: "skills/unsafe/SKILL.md", content: "Must be excluded", score: 1 },
                 ],
             );
             const catalog = new SkillCatalog(root);
@@ -58,7 +78,14 @@ describe("SkillsRetrieval", () => {
             assert.ok(loaded.availableFiles.includes("references/alpha.md"));
             const reference = await retrieval.loadSkill("alpha", ["references/alpha.md"]);
             assert.equal(reference.files[0]?.content, "Alpha reference details\n");
-            await assert.rejects(retrieval.loadSkill("manual"), /Manual skills cannot be loaded/u);
+            await assert.rejects(
+                retrieval.loadSkill("unindexed"),
+                /SKILL\.md is not indexed/u,
+            );
+            await assert.rejects(
+                retrieval.loadSkill("unsafe"),
+                /disable-model-invocation/u,
+            );
             await retrieval.close();
             assert.equal(backend.closed, true);
         } finally {
@@ -100,7 +127,7 @@ class FakeBackend implements SkillRetrievalBackend {
 async function createSkill(
     root: string,
     name: string,
-    invocation: "manual" | "retrieved" | "pinned",
+    disabled: boolean,
     files: Readonly<Record<string, string>> = {},
 ): Promise<void> {
     const skillRoot = join(root, name);
@@ -108,9 +135,7 @@ async function createSkill(
     await writeFile(join(skillRoot, "SKILL.md"), `---
 name: ${name}
 description: ${name} skill description
-disable-model-invocation: true
-metadata:
-  invocation: ${invocation}
+disable-model-invocation: ${String(disabled)}
 ---
 # ${name}
 Instructions for ${name}.

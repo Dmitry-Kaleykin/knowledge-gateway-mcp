@@ -25,8 +25,6 @@ describe("Skills Retrieval Pi extension", () => {
 name: example
 description: Example specialized guidance
 disable-model-invocation: true
-metadata:
-  invocation: retrieved
 ---
 # Example
 Follow this guidance.
@@ -56,7 +54,6 @@ Follow this guidance.
             registerSkillsRetrievalPiTools(
                 harness.api,
                 retrieval,
-                catalog.manifest.skills,
             );
 
             assert.deepEqual([...harness.tools.keys()], ["search_skills", "load_skill"]);

@@ -20,9 +20,9 @@ Scribery MCP subprocess with only `list_documentation_sources` and
 `search_documentation` enabled. Scribery's tools are never exposed to the model,
 and this project does not provide a public MCP server or executable.
 
-## Invocation policy
+## Source policy
 
-Every Pi skill managed by Skills Retrieval must remain hidden from Pi's native model
+Every skill selected for retrieval must remain hidden from Pi's native model
 catalog:
 
 ```yaml
@@ -30,20 +30,14 @@ catalog:
 name: example-skill
 description: Specialized guidance for an example workflow.
 disable-model-invocation: true
-metadata:
-  invocation: retrieved
 ---
 ```
 
-Supported policies are:
-
-- `manual` — ignored by retrieval and available only through Pi's manual skill invocation;
-- `retrieved` — eligible for `search_skills` and `load_skill`;
-- `pinned` — eligible for search/load and advertised in the extension instructions.
-
-Missing `metadata.invocation` defaults safely to `manual`. A `retrieved` or
-`pinned` skill without `disable-model-invocation: true` is excluded, preventing
-the same skill from appearing through Pi's native catalog and retrieval.
+The source list of the configured Scribery documentation is the retrieval
+allowlist. A skill is eligible only when its directory has been added as a
+Scribery source, its `SKILL.md` is present in the active index, and it sets
+`disable-model-invocation: true`. Skills absent from that index remain available
+only through Pi's manual skill invocation.
 
 ## Automatic manifest
 
@@ -67,12 +61,17 @@ In `scribery-tui`:
 
 1. Create documentation named `pi-skills`.
 2. Choose **Configure sources** → **Add directory**.
-3. Select `~/.pi/agent/skills` and use a mount path such as `skills`.
-4. Choose **Index documentation**.
+3. Select one skill directory that should be retrievable, such as
+   `~/.pi/agent/skills/example-skill`.
+4. Give it a unique mount path, normally the skill name.
+5. Repeat for each skill you want in retrieval.
+6. Ensure the parent `~/.pi/agent/skills` directory is not also configured as a
+   source, which would index every skill and duplicate selected files.
+7. Choose **Index documentation**.
 
-Use the same ordinary **Index documentation** action after skill files change.
-Scribery discovers additions, modifications, and deletions while reusing
-unchanged chunks and embeddings.
+Use the same ordinary **Index documentation** action after skill files or the
+source list changes. Scribery discovers additions, modifications, and deletions
+while reusing unchanged chunks and embeddings.
 
 ## Install in Pi
 
@@ -108,7 +107,7 @@ Available settings are:
 
 Use either a Scribery profile or explicit base-URL/reranking settings, not both.
 
-Pi skill discovery must remain enabled. Individual retrieved skills should still
+Pi skill discovery must remain enabled. Individually indexed skills must still
 set `disable-model-invocation: true`; this hides their descriptions from Pi's
 model catalog without preventing the extension from invoking `/skill:name`.
 
@@ -117,8 +116,10 @@ model catalog without preventing the extension from invoking `/skill:name`.
 - Filesystem and Scribery operations are read-only. Native skill activation adds
   a user message to the current Pi session.
 - There is no `list_skills`, indexing, synchronization, or manifest tool.
-- Search is hard-scoped to indexed files owned by eligible skills.
-- Manual skills are neither searchable nor loadable through retrieval.
+- Search is hard-scoped to indexed files owned by skill packages whose
+  `SKILL.md` is indexed.
+- Skills omitted from the Scribery source list are neither searchable nor
+  loadable through retrieval.
 - `load_skill` accepts only manifest-listed, skill-relative paths and rejects
   traversal, binary files, oversized files, and oversized combined responses.
 - The model cannot select documentation identifiers, provider settings,

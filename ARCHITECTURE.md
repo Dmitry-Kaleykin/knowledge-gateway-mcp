@@ -14,12 +14,13 @@ Pi
 
 ## Responsibilities
 
-`SkillCatalog` owns filesystem truth and Pi-specific policy. It discovers nested
-skill packages, builds the in-memory manifest, and decides which invocation
-values permit model access.
+`SkillCatalog` owns filesystem truth and Pi-specific safety. It discovers nested
+skill packages, builds the in-memory manifest, and requires retrieval candidates
+to set `disable-model-invocation: true`.
 
 `SkillsRetrieval` joins Scribery source identities to the live skill manifest.
-It owns grouping, result limits, presentation, and safe reference-file loading.
+It treats the configured Scribery source list as the retrieval allowlist and owns
+grouping, result limits, presentation, and safe reference-file loading.
 
 `ScriberyMcpBackend` is a private retrieval client. It starts Scribery as a
 read-only MCP subprocess and requests only indexed-file inventory and semantic
@@ -35,8 +36,10 @@ message, relative-reference base, and collapsible widget.
 ```text
 search_skills(query)
   → refresh local manifest
+  → retain skills with disable-model-invocation: true
   → request Scribery indexed-file inventory
-  → retain source IDs mapped to retrieved/pinned skill files
+  → authorize only skill packages whose SKILL.md is indexed
+  → retain source IDs mapped to those skill packages
   → search Scribery with that exact source-ID scope
   → map each nested result to its owning skill
   → keep the best result per skill
@@ -51,13 +54,14 @@ intuitive and prevents lifecycle mechanics from leaking into the model surface.
 
 ```text
 load_skill(name)
-  → refresh and validate retrieved/pinned policy
+  → refresh and validate disable-model-invocation
+  → verify the skill's SKILL.md is indexed in Scribery
   → queue /skill:name as a steering user message
   → Pi resolves its discovered SKILL.md
   → Pi strips frontmatter and adds the native <skill> user message
   → Pi renders its native collapsible skill widget
 
 load_skill(name, files=[reference paths])
-  → refresh and validate retrieved/pinned policy
+  → perform the same safety and indexed-source checks
   → safely return only manifest-owned reference files
 ```

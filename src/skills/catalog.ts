@@ -50,7 +50,6 @@ export class SkillCatalog {
                 skills.push({
                     name: frontmatter.name,
                     description: frontmatter.description,
-                    invocation: frontmatter.invocation,
                     disableModelInvocation: frontmatter.disableModelInvocation,
                     root: skillRoot,
                     entrypoint,
@@ -85,7 +84,6 @@ export class SkillCatalog {
         const manifestHash = hashText(JSON.stringify(unambiguousSkills.map((skill) => ({
             name: skill.name,
             description: skill.description,
-            invocation: skill.invocation,
             disableModelInvocation: skill.disableModelInvocation,
             root: skill.root,
             packageHash: skill.packageHash,
@@ -100,17 +98,15 @@ export class SkillCatalog {
         return this.#manifest;
     }
 
-    accessibleSkills(): readonly (
-        SkillManifestEntry & { invocation: "retrieved" | "pinned" }
-    )[] {
-        return this.manifest.skills.filter(isRetrievalAccessible);
+    retrievalCandidates(): readonly SkillManifestEntry[] {
+        return this.manifest.skills.filter(isRetrievalCandidate);
     }
 
-    findAccessibleSkill(name: string): (
-        SkillManifestEntry & { invocation: "retrieved" | "pinned" }
-    ) | undefined {
+    findRetrievalCandidate(name: string): SkillManifestEntry | undefined {
         const normalized = name.trim().toLowerCase();
-        return this.accessibleSkills().find((skill) => skill.name.toLowerCase() === normalized);
+        return this.retrievalCandidates().find((skill) =>
+            skill.name.toLowerCase() === normalized
+        );
     }
 
     async readTextFile(skill: SkillManifestEntry, relativePath: string): Promise<string> {
@@ -163,11 +159,8 @@ interface CachedFile {
     file: SkillFile;
 }
 
-export function isRetrievalAccessible(
-    skill: SkillManifestEntry,
-): skill is SkillManifestEntry & { invocation: "retrieved" | "pinned" } {
-    return skill.disableModelInvocation &&
-        (skill.invocation === "retrieved" || skill.invocation === "pinned");
+export function isRetrievalCandidate(skill: SkillManifestEntry): boolean {
+    return skill.disableModelInvocation;
 }
 
 async function discoverSkillRoots(root: string): Promise<readonly string[]> {

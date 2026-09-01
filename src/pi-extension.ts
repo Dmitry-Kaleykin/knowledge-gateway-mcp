@@ -8,7 +8,6 @@ import { ScriberyMcpBackend } from "./backends/scribery-mcp-backend.js";
 import { configurationFromEnvironment } from "./config.js";
 import type {
     LoadedSkill,
-    SkillManifestEntry,
     SkillSearchResponse,
 } from "./contracts.js";
 import { SkillsRetrieval } from "./retrieval.js";
@@ -26,7 +25,7 @@ export default async function skillsRetrievalPiExtension(
         new ScriberyMcpBackend(configuration),
     );
     await retrieval.initialize();
-    registerSkillsRetrievalPiTools(pi, retrieval, catalog.manifest.skills);
+    registerSkillsRetrievalPiTools(pi, retrieval);
 }
 
 export function registerSkillsRetrievalPiTools(
@@ -35,19 +34,7 @@ export function registerSkillsRetrievalPiTools(
         SkillsRetrieval,
         "searchSkills" | "loadSkill" | "resolveSkill" | "close"
     >,
-    skills: readonly SkillManifestEntry[],
 ): void {
-    const pinned = skills.filter((skill) =>
-        skill.disableModelInvocation && skill.invocation === "pinned"
-    );
-    const pinnedGuidance = pinned.length === 0
-        ? []
-        : [
-            "Pinned skills available through load_skill: " + pinned.map((skill) =>
-                `${skill.name} (${skill.description})`
-            ).join("; "),
-        ];
-
     pi.registerTool({
         name: "search_skills",
         label: "Search Skills",
@@ -58,7 +45,6 @@ export function registerSkillsRetrievalPiTools(
         promptSnippet: "Search the local skill library for task-specific guidance",
         promptGuidelines: [
             "Use search_skills when specialized instructions or an established workflow may apply; never use it to enumerate skills.",
-            ...pinnedGuidance,
         ],
         parameters: Type.Object({
             query: Type.String({
